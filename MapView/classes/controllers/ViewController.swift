@@ -186,6 +186,12 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
             MKCoordinateRegion(center: center.coordinate, span: currentLocationSpan)
         myMapView.setRegion(currentRegion, animated: true)
     }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        myMapView.camera.heading = newHeading.magneticHeading
+        print(newHeading.magneticHeading)
+        myMapView.setCamera(myMapView.camera, animated: true)
+    }
 
     @IBAction func myExitBtnAction(_ sender: UIButton) {
         for c in view.constraints{
@@ -406,11 +412,13 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
             didDropDown(true)
             sceneLocationView.run()
             addSceneModels()
+//            myLocationManager.startUpdatingHeading()
             arUp = true
         }else{
             didDropDown(false)
             sceneLocationView.removeRoutes(routes: routes!)
             sceneLocationView.pause()
+//            myLocationManager.stopUpdatingHeading()
             arUp = false
         }
         
@@ -419,12 +427,11 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     func didDropDown(_ bool: Bool) {
         UIView.animate(withDuration: 0.5) {
             if bool {
-                self.myMapView.layer.borderWidth = 2
+                self.myMapView.layer.borderWidth = 3
                 self.myMapView.layer.borderColor = #colorLiteral(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
-                self.myMapView.layer.shadowRadius = 50
                 self.myMapView.alpha = 0.8
                 self.mapViewHeight.constant = self.arView.bounds.width-self.arView.bounds.height
-                self.arViewUp.constant = (self.arView.bounds.height * 2 / 3)
+                self.arViewUp.constant = (self.arView.bounds.height * 3 / 5)
                 self.myMapView.layer.cornerRadius = self.myMapView.bounds.width / 2
                 self.locationSetRegion(lat: self.mylatitude!, lon: self.mylongitude!, latDelta: 0.001, lonDelta: 0.001)
             } else {
@@ -456,9 +463,6 @@ extension UIView {
 // AR Line
 extension ViewController {
     
-    /// Adds the appropriate ARKit models to the scene.  Note: that this won't
-    /// do anything until the scene has a `currentLocation`.  It "polls" on that
-    /// and when a location is finally discovered, the models are added.
     func addSceneModels() {
         // 1. Don't try to add the models to the scene until we have a current location
         guard sceneLocationView.sceneLocationManager.currentLocation != nil else {
