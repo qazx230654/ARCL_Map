@@ -4,4 +4,5 @@ use_frameworks!
 
 target 'MapView' do
     pod 'ARCL'
+    pod 'IQKeyboardManagerSwift'
 end

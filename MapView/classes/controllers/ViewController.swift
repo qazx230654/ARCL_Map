@@ -14,30 +14,21 @@ import ARCL
 import ARKit
 import SceneKit
 
-struct CurrentWeather:Decodable {
-    var main:Main
-}
 
-struct Main:Decodable{
-    var temp : Double
-}
-
-class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate {
+class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate {
     
     
     var myLocationManager :CLLocationManager!
     @IBOutlet weak var backView: UIView!
     @IBOutlet weak var backView2: UIView!
-    
     @IBOutlet weak var arBtnView: UIView!
     @IBOutlet weak var arBtn: UIButton!
     @IBOutlet weak var arView: UIView!
     @IBOutlet weak var arViewUp: NSLayoutConstraint!
     @IBOutlet weak var mapViewHeight: NSLayoutConstraint!
     @IBOutlet weak var myMapView: MKMapView!
-    @IBOutlet var myView: UIView!
+    @IBOutlet var myView: MyView!
     @IBOutlet weak var myExitBtn: UIButton!
-    @IBOutlet weak var locationBtn: UIButton!
     @IBOutlet weak var mySC: UISegmentedControl!
     @IBOutlet weak var tempLab: UILabel!
     var latitude : String = ""
@@ -47,23 +38,15 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     var checkBool : Bool = false
     var openSetBool : Bool = false
     var arUp : Bool = false
-//    var dataArray = [AnyObject]()
-    
     let sceneLocationView = SceneLocationView()
+    var mapSearchResults: [MKMapItem]?
     let displayDebugging = false
     var centerMapOnUserLocation: Bool = true
     let adjustNorthByTappingSidesOfScreen = false
-    var showMap = false {
-        didSet {
-            guard let mapView = myMapView else {
-                return
-            }
-            mapView.isHidden = !showMap
-        }
-    }
     var routes: [MKRoute]?
     var userAnnotation: MKPointAnnotation?
     var locationEstimateAnnotation: MKPointAnnotation?
+    var i = 0
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -75,7 +58,6 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         arView.layer.cornerRadius = 10
         arBtnView.layer.cornerRadius = 10
         backView2.isHidden = true
-        locationBtn.layer.cornerRadius = 10
         myLocationManager = CLLocationManager()
         myLocationManager.delegate = self
         myLocationManager.distanceFilter = kCLLocationAccuracyHundredMeters
@@ -232,31 +214,44 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         }
     }
     
-    @IBAction func showLocationAction(_ sender: UIButton) {
-        let alertController = UIAlertController(title: "輸入經緯度", message: "", preferredStyle: .alert)
-        alertController.addTextField(configurationHandler: nil)
-        alertController.addTextField(configurationHandler: nil)
-        alertController.textFields?.forEach({ (textfield) in
-            textfield.keyboardType = .decimalPad
-        })
-        let cancelAction = UIAlertAction(title: "取消", style: .cancel, handler: nil)
-        let okAction = UIAlertAction(title: "確認", style: .default) { (action: UIAlertAction) -> Void in
-            let txtlatitude = (alertController.textFields?.first)! as UITextField
-            let txtlongitude = (alertController.textFields?.last)! as UITextField
-            self.latitude = txtlatitude.text ?? ""
-            self.longitude = txtlongitude.text ?? ""
-            if self.latitude == "" || self.longitude == "" {
-                self.latitude = "0"
-                self.longitude = "0"
-            }
-            self.mylatitude = Double(self.latitude)
-            self.mylongitude = Double(self.longitude)
-            
-            self.changeNowLocation(latitude: self.mylatitude!, longitude: self.mylongitude!)
+    @IBAction func searchBtnAction(_ sender: UIButton) {
+        guard let addressText = myView.searchTF.text, !addressText.isEmpty else {
+            return
         }
-        alertController.addAction(cancelAction)
-        alertController.addAction(okAction)
-        self.present(alertController, animated: true, completion: nil)
+        
+        defer {
+            self.myView.searchTF.resignFirstResponder()
+        }
+        
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = addressText
+        
+        let search = MKLocalSearch(request: request)
+        search.start { response, error in
+            defer {
+                DispatchQueue.main.async { [weak self] in
+//                    self?.myView.refreshControl.stopAnimating()
+                }
+            }
+            if let error = error {
+                return assertionFailure("Error searching for \(addressText): \(error.localizedDescription)")
+            }
+            guard let response = response, response.mapItems.count > 0 else {
+                return assertionFailure("No response or empty response")
+            }
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else {
+                    return
+                }
+                self.mapSearchResults = response.sortedMapItems(byDistanceFrom: self.myLocationManager.location)
+                self.myView.searchTable.reloadData()
+            }
+        }
+    }
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        self.view.endEditing(true)
+        return true
     }
     
     func changeNowLocation(latitude:CLLocationDegrees, longitude:CLLocationDegrees){
@@ -278,10 +273,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         }else if recognizer.state == .ended {
             let point = recognizer.location(in: myMapView)
             let coodinate = myMapView.convert(point, toCoordinateFrom: myMapView)
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = coodinate
-            annotation.subtitle = "緯度：\(coodinate.latitude) 經度:\(coodinate.longitude)";
-            myMapView.addAnnotation(annotation)
+            locationAddress(coodinate: coodinate)
         }
     }
     
@@ -309,7 +301,8 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
         let latitude = view.annotation?.coordinate.latitude
         let longitude = view.annotation?.coordinate.longitude
-        let alertController = UIAlertController(title: "", message: "緯度：\(latitude!)\n經度：\(longitude!)", preferredStyle: .actionSheet)
+        let title = view.annotation!
+        let alertController = UIAlertController(title: title.title!, message: title.subtitle!, preferredStyle: .actionSheet)
         let navigationAction = UIAlertAction(title: "導航", style: .default) { (action :UIAlertAction) -> Void in
             let startLocation = CLLocationCoordinate2D(latitude: self.mylatitude!, longitude: self.mylongitude!)
             let endLocation = CLLocationCoordinate2D(latitude: latitude!, longitude: longitude!)
@@ -351,7 +344,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
             self.myMapView.removeOverlays(renderer)
             self.arBtn.isEnabled = false
             self.didDropDown(false)
-            self.sceneLocationView.removeRoutes(routes: self.routes!)
+//            self.sceneLocationView.removeRoutes(routes: self.routes!)
             self.sceneLocationView.pause()
             self.routes = []
         }
@@ -412,13 +405,13 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
             didDropDown(true)
             sceneLocationView.run()
             addSceneModels()
-//            myLocationManager.startUpdatingHeading()
+            myLocationManager.startUpdatingHeading()
             arUp = true
         }else{
             didDropDown(false)
             sceneLocationView.removeRoutes(routes: routes!)
             sceneLocationView.pause()
-//            myLocationManager.stopUpdatingHeading()
+            myLocationManager.stopUpdatingHeading()
             arUp = false
         }
         
@@ -464,7 +457,6 @@ extension UIView {
 extension ViewController {
     
     func addSceneModels() {
-        // 1. Don't try to add the models to the scene until we have a current location
         guard sceneLocationView.sceneLocationManager.currentLocation != nil else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.addSceneModels()
@@ -475,20 +467,15 @@ extension ViewController {
         let box = SCNBox(width: 1, height: 0.2, length: 5, chamferRadius: 0.25)
         box.firstMaterial?.diffuse.contents = UIColor.gray.withAlphaComponent(0.5)
         
-        // 2. If there is a route, show that
+        i = 0
         if let routes = routes {
             sceneLocationView.removeAllNodes()
             sceneLocationView.addRoutes(routes: routes) { distance -> SCNBox in
                 let box = SCNBox(width: 1.75, height: 0.5, length: distance, chamferRadius: 0.25)
                 
-                //                // Option 1: An absolutely terrible box material set (that demonstrates what you can do):
-                //                box.materials = ["box0", "box1", "box2", "box3", "box4", "box5"].map {
-                //                    let material = SCNMaterial()
-                //                    material.diffuse.contents = UIImage(named: $0)
-                //                    return material
-                //                }
-                
-                // Option 2: Something more typical
+                print(self.i)
+              
+                self.i = self.i + 1
                 box.firstMaterial?.diffuse.contents = UIColor.green.withAlphaComponent(0.7)
                 return box
             }
@@ -500,11 +487,9 @@ extension ViewController {
         }
     }
     
-    
-    
     //  Nodes
     func buildDemoData() -> [LocationAnnotationNode] {
-        var nodes: [LocationAnnotationNode] = []
+        let nodes: [LocationAnnotationNode] = []
         
 //        let spaceNeedle = buildNode(latitude: 47.6205, longitude: -122.3493, altitude: 225, imageName: "pin")
 //        nodes.append(spaceNeedle)
@@ -566,24 +551,136 @@ extension ViewController {
             }
         }
     }
-//
-//    func buildNode(latitude: CLLocationDegrees, longitude: CLLocationDegrees,
-//                   altitude: CLLocationDistance, imageName: String) -> LocationAnnotationNode {
-//        let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-//        let location = CLLocation(coordinate: coordinate, altitude: altitude)
-//        let image = UIImage(named: imageName)!
-//        return LocationAnnotationNode(location: location, image: image)
-//    }
-//
-//    func buildViewNode(latitude: CLLocationDegrees, longitude: CLLocationDegrees,
-//                       altitude: CLLocationDistance, text: String) -> LocationAnnotationNode {
-//        let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-//        let location = CLLocation(coordinate: coordinate, altitude: altitude)
-//        let label = UILabel(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
-//        label.text = text
-//        label.backgroundColor = .green
-//        label.textAlignment = .center
-//        return LocationAnnotationNode(location: location, view: label)
-//    }
+    
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        guard let mapSearchResults = mapSearchResults else {
+            return 0
+        }
+        
+        return mapSearchResults.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        guard let mapSearchResults = mapSearchResults,
+            indexPath.row < mapSearchResults.count,
+            let locationCell = cell as? LocationCell else {
+                return cell
+        }
+        locationCell.locationManager = myLocationManager
+        locationCell.mapItem = mapSearchResults[indexPath.row]
+        
+        return locationCell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard let mapSearchResults = mapSearchResults, indexPath.row < mapSearchResults.count else {
+            return
+        }
+        let selectedMapItem = mapSearchResults[indexPath.row]
+        getDirections(to: selectedMapItem)
+    }
+    
+    func getDirections(to mapLocation: MKMapItem) {
+        
+        let request = MKDirections.Request()
+        request.source = MKMapItem.forCurrentLocation()
+        request.destination = mapLocation
+        request.requestsAlternateRoutes = false
+        
+        let directions = MKDirections(request: request)
+        
+        directions.calculate(completionHandler: { response, error in
+            defer {
+                DispatchQueue.main.async { [weak self] in
+//                    self?.refreshControl.stopAnimating()
+                }
+            }
+            if let error = error {
+                return print("Error getting directions: \(error.localizedDescription)")
+            }
+            guard let response = response else {
+                return assertionFailure("No error, but no response, either.")
+            }
+            
+            DispatchQueue.main.async { [weak self] in
+                guard self != nil else {
+                    return
+                }
+                
+                self?.routes = response.routes
+                let route = response.routes[0]
+                self?.myMapView.addOverlay((route.polyline), level: MKOverlayLevel.aboveRoads)
+                let rect = route.polyline.boundingMapRect
+                self?.myMapView.setRegion(MKCoordinateRegion(rect), animated: true)
+                self?.arBtn.isEnabled = true
+                self?.myExitBtnAction(self!.myExitBtn)
+            }
+        })
+    }
+    
+    
+}
+
+extension MKLocalSearch.Response {
+    
+    func sortedMapItems(byDistanceFrom location: CLLocation?) -> [MKMapItem] {
+        guard let location = location else {
+            return mapItems
+        }
+        
+        return mapItems.sorted { (first, second) -> Bool in
+            guard let d1 = first.placemark.location?.distance(from: location),
+                let d2 = second.placemark.location?.distance(from: location) else {
+                    return true
+            }
+            
+            return d1 < d2
+        }
+    }
+    
+}
+
+extension ViewController {
+    func geocode(latitude: Double, longitude: Double, completion: @escaping (CLPlacemark?, Error?) -> ())  {
+        //1
+        let locale = Locale(identifier: "zh_TW")
+        let loc: CLLocation = CLLocation(latitude: latitude, longitude: longitude)
+        if #available(iOS 11.0, *) {
+            CLGeocoder().reverseGeocodeLocation(loc, preferredLocale: locale) { placemarks, error in
+                guard let placemark = placemarks?.first, error == nil else {
+                    UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+                    completion(nil, error)
+                    return
+                }
+                completion(placemark, nil)
+            }
+        }
+    }
+    
+    func locationAddress(coodinate: CLLocationCoordinate2D){
+        geocode(latitude: coodinate.latitude, longitude: coodinate.longitude) { placemark, error in
+            guard let placemark = placemark, error == nil else { return }
+            DispatchQueue.main.async {
+                print("address1:", placemark.thoroughfare ?? "")
+                print("address2:", placemark.subThoroughfare ?? "")
+                print("city:",     placemark.locality ?? "")
+                print("state:",    placemark.administrativeArea ?? "")
+                print("zip code:", placemark.postalCode ?? "")
+                print("country:",  placemark.country ?? "")
+                print("placemark",placemark)
+                let placemark = "\(placemark)"
+                let title = String(placemark.split(separator: ",")[0])
+                let subtitle = String(placemark.split(separator: "@")[0].split(separator: ",")[1])
+                let annotation = MKPointAnnotation()
+                annotation.coordinate = coodinate
+                annotation.title = title
+                annotation.subtitle = subtitle
+                self.myMapView.addAnnotation(annotation)
+            }
+        }
+    }
+    
 }
 

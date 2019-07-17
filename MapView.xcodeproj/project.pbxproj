@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		348A62CA22DC571300AE3A88 /* WeatherDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348A62C922DC571300AE3A88 /* WeatherDetail.swift */; };
+		348A62CC22DC61D100AE3A88 /* MyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348A62CB22DC61D100AE3A88 /* MyView.swift */; };
+		348A62CE22DC6D4A00AE3A88 /* LocationCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348A62CD22DC6D4A00AE3A88 /* LocationCell.swift */; };
 		A07B248D3D754E64BACFD416 /* Pods_MapView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FA4939F2EA0A0CF8CAA3940C /* Pods_MapView.framework */; };
 		B99B5F30218EDFF900BA4C97 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B99B5F2F218EDFF900BA4C97 /* AppDelegate.swift */; };
 		B99B5F32218EDFF900BA4C97 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B99B5F31218EDFF900BA4C97 /* ViewController.swift */; };
@@ -17,6 +20,9 @@
 
 /* Begin PBXFileReference section */
 		2E014A370D07F1E6E4D32309 /* Pods-MapView.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MapView.release.xcconfig"; path = "Target Support Files/Pods-MapView/Pods-MapView.release.xcconfig"; sourceTree = "<group>"; };
+		348A62C922DC571300AE3A88 /* WeatherDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherDetail.swift; sourceTree = "<group>"; };
+		348A62CB22DC61D100AE3A88 /* MyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyView.swift; sourceTree = "<group>"; };
+		348A62CD22DC6D4A00AE3A88 /* LocationCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationCell.swift; sourceTree = "<group>"; };
 		4A17E7BAB8DD815801193F5E /* Pods-MapView.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MapView.debug.xcconfig"; path = "Target Support Files/Pods-MapView/Pods-MapView.debug.xcconfig"; sourceTree = "<group>"; };
 		B99B5F2C218EDFF900BA4C97 /* MapView.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MapView.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B99B5F2F218EDFF900BA4C97 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -62,6 +68,8 @@
 		348A628822D324B400AE3A88 /* models */ = {
 			isa = PBXGroup;
 			children = (
+				348A62C922DC571300AE3A88 /* WeatherDetail.swift */,
+				348A62CD22DC6D4A00AE3A88 /* LocationCell.swift */,
 			);
 			path = models;
 			sourceTree = "<group>";
@@ -69,6 +77,7 @@
 		348A628922D324BA00AE3A88 /* views */ = {
 			isa = PBXGroup;
 			children = (
+				348A62CB22DC61D100AE3A88 /* MyView.swift */,
 			);
 			path = views;
 			sourceTree = "<group>";
@@ -235,6 +244,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				348A62CC22DC61D100AE3A88 /* MyView.swift in Sources */,
+				348A62CE22DC6D4A00AE3A88 /* LocationCell.swift in Sources */,
+				348A62CA22DC571300AE3A88 /* WeatherDetail.swift in Sources */,
 				B99B5F32218EDFF900BA4C97 /* ViewController.swift in Sources */,
 				B99B5F30218EDFF900BA4C97 /* AppDelegate.swift in Sources */,
 			);
