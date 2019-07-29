@@ -45,8 +45,10 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     let adjustNorthByTappingSidesOfScreen = false
     var routes: [MKRoute]?
     var userAnnotation: MKPointAnnotation?
+    var markAnnotation: MKAnnotation?
     var locationEstimateAnnotation: MKPointAnnotation?
     var i = 0
+    var upAndDown : Bool = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -70,18 +72,25 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         myMapView.delegate = self
         
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(self.longPress))
-        
         self.view.addGestureRecognizer(longPress)
+        
+        let swipeUp = UISwipeGestureRecognizer(target:self, action:#selector(swipe(_:)))
+        swipeUp.direction = .up
+        self.myView.addGestureRecognizer(swipeUp)
+        
+        let swipeDown = UISwipeGestureRecognizer(target:self, action:#selector(swipe(_:)))
+        swipeDown.direction = .down
+        self.myView.addGestureRecognizer(swipeDown)
     }
     
     override func viewWillAppear(_ animated: Bool) {
         view.addSubview(myView)
         myView.translatesAutoresizingMaskIntoConstraints = false
         
-        myView.heightAnchor.constraint(equalToConstant: view.bounds.height/2).isActive = true
+        myView.heightAnchor.constraint(equalToConstant: view.bounds.height).isActive = true
         myView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 0).isActive = true
         myView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: 0).isActive = true
-        let c = myView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: view.bounds.height/2)
+        let c = myView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: view.bounds.height)
         c.identifier = "bottom"
         c.isActive = true
         
@@ -178,12 +187,13 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     @IBAction func myExitBtnAction(_ sender: UIButton) {
         for c in view.constraints{
             if c.identifier == "bottom"{
-                c.constant = view.bounds.height/2
+                c.constant = view.bounds.height
                 break
             }
         }
         UIView.animate(withDuration: 0.5) {
             self.view.layoutIfNeeded()
+            self.myMapView.alpha = 1
         }
         if checkBool{
             let height = view.bounds.height/2
@@ -197,12 +207,13 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     @IBAction func locationBtnAction(_ sender: UIButton) {
         for c in view.constraints{
             if c.identifier == "bottom"{
-                c.constant = 0
+                c.constant = view.bounds.height/2
                 break
             }
         }
         UIView.animate(withDuration: 0.5) {
             self.view.layoutIfNeeded()
+            self.myMapView.alpha = 0.5
         }
         
         if checkBool == false{
@@ -301,6 +312,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
         let latitude = view.annotation?.coordinate.latitude
         let longitude = view.annotation?.coordinate.longitude
+        markAnnotation = view.annotation
         let title = view.annotation!
         let alertController = UIAlertController(title: title.title!, message: title.subtitle!, preferredStyle: .actionSheet)
         let navigationAction = UIAlertAction(title: "導航", style: .default) { (action :UIAlertAction) -> Void in
@@ -420,7 +432,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     func didDropDown(_ bool: Bool) {
         UIView.animate(withDuration: 0.5) {
             if bool {
-                self.myMapView.layer.borderWidth = 3
+                self.myMapView.layer.borderWidth = 7
                 self.myMapView.layer.borderColor = #colorLiteral(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
                 self.myMapView.alpha = 0.8
                 self.mapViewHeight.constant = self.arView.bounds.width-self.arView.bounds.height
@@ -479,32 +491,30 @@ extension ViewController {
                 box.firstMaterial?.diffuse.contents = UIColor.green.withAlphaComponent(0.7)
                 return box
             }
-        } else {
-            // 3. If not, then show the
-            buildDemoData().forEach {
-                sceneLocationView.addLocationNodeWithConfirmedLocation(locationNode: $0)
-            }
+            
+            let applePark = buildViewNode(latitude:(markAnnotation?.coordinate.latitude)! , longitude:(markAnnotation?.coordinate.longitude)! , altitude: 100, text: "\((markAnnotation?.title!)!)")
+            sceneLocationView.addLocationNodeWithConfirmedLocation(locationNode: applePark)
         }
+//        else {
+//            // 3. If not, then show the
+//            buildDemoData().forEach {
+//                sceneLocationView.addLocationNodeWithConfirmedLocation(locationNode: $0)
+//            }
+//        }
     }
     
-    //  Nodes
-    func buildDemoData() -> [LocationAnnotationNode] {
-        let nodes: [LocationAnnotationNode] = []
-        
-//        let spaceNeedle = buildNode(latitude: 47.6205, longitude: -122.3493, altitude: 225, imageName: "pin")
-//        nodes.append(spaceNeedle)
-//
-//        let empireStateBuilding = buildNode(latitude: 40.7484, longitude: -73.9857, altitude: 14.3, imageName: "pin")
-//        nodes.append(empireStateBuilding)
-//
-//        let canaryWharf = buildNode(latitude: 51.504607, longitude: -0.019592, altitude: 236, imageName: "pin")
-//        nodes.append(canaryWharf)
-//
-//        let applePark = buildViewNode(latitude: 37.334807, longitude: -122.009076, altitude: 100, text: "Apple ParApple Parkk")
-//        nodes.append(applePark)
-        
-        return nodes
+    func buildViewNode(latitude: CLLocationDegrees, longitude: CLLocationDegrees,
+                       altitude: CLLocationDistance, text: String) -> LocationAnnotationNode {
+        let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        let location = CLLocation(coordinate: coordinate, altitude: altitude)
+        let label = UILabel(frame: CGRect(x: 0, y: -500, width: 250, height: 50))
+        label.layer.cornerRadius = 80
+        label.text = text
+        label.backgroundColor = .white
+        label.textAlignment = .center
+        return LocationAnnotationNode(location: location, view: label)
     }
+    
     
     @objc
     func updateUserLocation() {
@@ -579,9 +589,10 @@ extension ViewController {
             return
         }
         let selectedMapItem = mapSearchResults[indexPath.row]
-        getDirections(to: selectedMapItem)
+        getAnnotation(to: selectedMapItem)
     }
     
+    //MARK: make navigation
     func getDirections(to mapLocation: MKMapItem) {
         
         let request = MKDirections.Request()
@@ -618,6 +629,19 @@ extension ViewController {
                 self?.myExitBtnAction(self!.myExitBtn)
             }
         })
+    }
+    
+    func getAnnotation(to mapLocation: MKMapItem){
+        if let itemCoordinate = mapLocation.placemark.location?.coordinate{
+            let annotation = myMapView.annotations
+            myMapView.removeAnnotations(annotation)
+            let renderer = myMapView.overlays
+            myMapView.removeOverlays(renderer)
+            locationAddress(coodinate: itemCoordinate)
+            self.arBtn.isEnabled = true
+            self.myExitBtnAction(self.myExitBtn)
+            locationSetRegion(lat: itemCoordinate.latitude, lon: itemCoordinate.longitude, latDelta: 0.005, lonDelta: 0.005)
+        }
     }
     
     
@@ -682,5 +706,40 @@ extension ViewController {
         }
     }
     
+}
+
+//MARK: GestureRecognizer
+extension ViewController {
+    
+    @objc func swipe(_ recognizer:UISwipeGestureRecognizer){
+        
+        if recognizer.direction == .up{
+            if !upAndDown {
+                for c in view.constraints{
+                    if c.identifier == "bottom"{
+                        UIView.animate(withDuration: 0.5) {
+                            c.constant = self.view.bounds.height/10
+                        }
+                        break
+                    }
+                }
+                upAndDown = true
+                print("up")
+            }
+        }else if recognizer.direction == .down{
+            if upAndDown {
+                for c in view.constraints{
+                    if c.identifier == "bottom"{
+                        UIView.animate(withDuration: 0.5) {
+                            c.constant = self.view.bounds.height/2
+                        }
+                        break
+                    }
+                }
+                upAndDown = false
+                print("down")
+            }
+        }
+    }
 }
 

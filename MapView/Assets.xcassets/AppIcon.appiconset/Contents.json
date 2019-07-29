@@ -33,13 +33,13 @@
     {
       "size" : "60x60",
       "idiom" : "iphone",
-      "filename" : "globe-2.png",
+      "filename" : "AR-EasyGo.png",
       "scale" : "2x"
     },
     {
       "size" : "60x60",
       "idiom" : "iphone",
-      "filename" : "globe-1.png",
+      "filename" : "AR-EasyGo 拷貝.png",
       "scale" : "3x"
     },
     {
@@ -90,7 +90,7 @@
     {
       "size" : "1024x1024",
       "idiom" : "ios-marketing",
-      "filename" : "globe.png",
+      "filename" : "AR-EasyGo 拷貝-1.png",
       "scale" : "1x"
     }
   ],
