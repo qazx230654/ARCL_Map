@@ -13,12 +13,14 @@ import Foundation
 import ARCL
 import ARKit
 import SceneKit
+import CoreMotion
 
 
 class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate {
     
     
     var myLocationManager :CLLocationManager!
+    var motion = CMMotionManager()
     @IBOutlet weak var backView: UIView!
     @IBOutlet weak var backView2: UIView!
     @IBOutlet weak var arBtnView: UIView!
@@ -48,6 +50,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     var markAnnotation: MKAnnotation?
     var locationEstimateAnnotation: MKPointAnnotation?
     var i = 0
+    var timer = Timer()
     var upAndDown : Bool = false
     
     override func viewDidLoad() {
@@ -70,6 +73,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         sceneLocationView.frame = self.view.bounds
         arView.addSubview(sceneLocationView)
         myMapView.delegate = self
+        NotificationCenter.default.addObserver(self, selector: #selector(updataValue(notification:)), name: NSNotification.Name("pitch") , object: nil)
         
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(self.longPress))
         self.view.addGestureRecognizer(longPress)
@@ -180,8 +184,48 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         myMapView.camera.heading = newHeading.magneticHeading
-        print(newHeading.magneticHeading)
+//        print(newHeading.magneticHeading)
         myMapView.setCamera(myMapView.camera, animated: true)
+    }
+    
+    func startQueuedUpdates() {
+        if motion.isDeviceMotionAvailable {
+            self.motion.deviceMotionUpdateInterval = 10.0 / 60.0
+            self.motion.showsDeviceMovementDisplay = true
+            self.motion.startDeviceMotionUpdates(using: .xMagneticNorthZVertical,
+                                                 to: OperationQueue.main, withHandler: { (data, error) in
+                                                    // Make sure the data is valid before accessing it.
+                                                    if let validData = data {
+                                                        // Get the attitude relative to the magnetic north reference frame.
+                                                        let roll = validData.attitude.roll
+                                                        let pitch = validData.attitude.pitch
+                                                        let yaw = validData.attitude.yaw
+                                                        print("\(roll) \(pitch) \(yaw)")
+                                                        // Use the motion data in your app.
+                                                        print(self.arUp)
+                                                        NotificationCenter.default.post(name: Notification.Name("pitch"), object: nil, userInfo: ["pitch":pitch])
+                                                        
+                                                    }
+                                                    
+            })
+        }
+    }
+    
+    @objc func updataValue(notification: NSNotification){
+        guard let pitch:Double = notification.userInfo!["pitch"] as? Double else {return}
+        if(arUp == false && pitch > 0.35){
+            didDropDown(true)
+            sceneLocationView.run()
+            addSceneModels()
+            myLocationManager.startUpdatingHeading()
+            arUp = true
+        }else if (arUp == true && pitch < 0.35){
+            didDropDown(false)
+            sceneLocationView.removeRoutes(routes: routes!)
+            sceneLocationView.pause()
+            myLocationManager.stopUpdatingHeading()
+            arUp = false
+        }
     }
 
     @IBAction func myExitBtnAction(_ sender: UIButton) {
@@ -417,16 +461,19 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
             didDropDown(true)
             sceneLocationView.run()
             addSceneModels()
+            startQueuedUpdates()
             myLocationManager.startUpdatingHeading()
             arUp = true
+            print("2345678")
         }else{
             didDropDown(false)
             sceneLocationView.removeRoutes(routes: routes!)
             sceneLocationView.pause()
+            motion.stopDeviceMotionUpdates()
             myLocationManager.stopUpdatingHeading()
             arUp = false
+            print("2345678")
         }
-        
     }
     // 地圖約束調整
     func didDropDown(_ bool: Bool) {
@@ -488,7 +535,7 @@ extension ViewController {
                 print(self.i)
               
                 self.i = self.i + 1
-                box.firstMaterial?.diffuse.contents = UIColor.green.withAlphaComponent(0.7)
+                box.firstMaterial?.diffuse.contents = UIColor.green.withAlphaComponent(0.8)
                 return box
             }
             

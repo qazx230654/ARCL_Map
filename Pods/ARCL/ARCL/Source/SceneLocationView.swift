@@ -141,8 +141,8 @@ public extension SceneLocationView {
 
     func run() {
         // Create a session configuration
-        let configuration = ARWorldTrackingConfiguration()
-        configuration.planeDetection = .horizontal
+        let configuration = AROrientationTrackingConfiguration()
+//        configuration.planeDetection = .horizontal
         configuration.worldAlignment = orientToTrueNorth ? .gravityAndHeading : .gravity
 
         // Run the view's session
